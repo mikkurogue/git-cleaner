@@ -1,9 +1,9 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use ariadne::{Color, Label, Report, ReportKind, Source};
 use chrono::{DateTime, Duration, Utc};
 use clap::Parser;
 use colored::*;
-use dialoguer::{theme::ColorfulTheme, MultiSelect};
+use dialoguer::{MultiSelect, theme::ColorfulTheme};
 use std::collections::BTreeMap;
 use std::ops::Range;
 use std::process::Command;
@@ -87,19 +87,19 @@ fn print_reports(
         let mut labels: Vec<Label<Range<usize>>> = Vec::new();
 
         for branch in author_branches {
-                    let start = source.len();
-                    source.push_str(&branch.name);
-                    let end = source.len();
+            let start = source.len();
+            source.push_str(&branch.name);
+            let end = source.len();
 
-                    labels.push(
-                        Label::new(start..end)
-                            .with_message(format!("last commit {}", branch.date.format("%Y-%m-%d")))
-                            .with_color(color),
-                    );
+            labels.push(
+                Label::new(start..end)
+                    .with_message(format!("last commit {}", branch.date.format("%Y-%m-%d")))
+                    .with_color(color),
+            );
 
-                    source.push('\n');
-                };
-        
+            source.push('\n');
+        }
+
         let report = Report::build(ReportKind::Custom("Stale", color), 0..0)
             .with_message(format!(
                 "{} — {} stale branches (before {})",
@@ -229,13 +229,18 @@ fn main() -> Result<()> {
             }
             Some(indices) => {
                 println!();
-                for i in &indices {
-                    let branch = &branches[*i];
-                    println!("Deleting {}", branch.name.red());
-                    Command::new("git")
-                        .args(["push", &args.remote, "--delete", &branch.name])
-                        .status()?;
-                }
+
+                indices
+                    .iter()
+                    .try_for_each(|i: &usize| -> Result<(), std::io::Error> {
+                        let branch = &branches[*i];
+                        println!("Deleting {}", branch.name.red());
+                        Command::new("git")
+                            .args(["push", &args.remote, "--delete", &branch.name])
+                            .status()?;
+
+                        Ok(())
+                    })?;
             }
         }
     }
